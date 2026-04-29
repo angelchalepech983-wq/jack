@@ -63,21 +63,21 @@ body, html, #root {
 
 .sub-title {
   font-family: 'Montserrat', sans-serif;
-  font-size: 1.2rem;
-  font-weight: 200;
-  color: rgba(255, 255, 255, 0.8);
-  letter-spacing: 0.8rem;
-  margin-bottom: 0.5rem;
+  font-size: 0.9rem;
+  font-weight: 300;
+  color: rgba(255, 255, 255, 0.7);
+  letter-spacing: 0.4rem;
+  margin-bottom: 0.4rem;
   text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
   animation: fadeInDown 2s ease-out;
 }
 
 .main-title {
   font-family: 'Cinzel', serif;
-  font-size: 5rem;
-  font-weight: 700;
+  font-size: 3.2rem;
+  font-weight: 400;
   color: #fff;
-  letter-spacing: 1.5rem;
+  letter-spacing: 0.8rem;
   text-shadow: 
     0 0 10px rgba(255, 255, 255, 0.8),
     0 0 20px rgba(153, 0, 255, 0.5);
