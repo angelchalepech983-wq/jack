@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useMemo, useCallback } from 'react';
 import * as THREE from 'three';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import './App.css';
 
 interface Universe3DProps {
@@ -28,8 +29,8 @@ const Universe3D: React.FC<Universe3DProps> = React.memo(({ onSunClick, onPlanet
       precision: "highp"
     });
     
-    // Aumentamos el pixel ratio para aprovechar pantallas de alta densidad (Retina/4K)
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 3));
+    // Capamos a 2x para evitar lag en pantallas 4K innecesariamente
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     mountRef.current.appendChild(renderer.domElement);
@@ -40,19 +41,17 @@ const Universe3D: React.FC<Universe3DProps> = React.memo(({ onSunClick, onPlanet
 
     const createHeartTexture = () => {
       const canvas = document.createElement('canvas');
-      canvas.width = 256; canvas.height = 256; // Doblamos resolución
-      const ctx = canvas.getContext('2d', { alpha: true })!;
+      canvas.width = 128; canvas.height = 128;
+      const ctx = canvas.getContext('2d')!;
       ctx.fillStyle = 'white';
       ctx.beginPath();
-      const x = 128, y = 160;
+      const x = 64, y = 80;
       ctx.moveTo(x, y);
-      ctx.bezierCurveTo(x - 90, y - 90, x - 110, y + 50, x, y + 100);
-      ctx.bezierCurveTo(x + 110, y + 25, x + 90, y - 90, x, y);
+      ctx.bezierCurveTo(x - 45, y - 45, x - 55, y + 25, x, y + 50);
+      ctx.bezierCurveTo(x + 55, y + 25, x + 45, y - 45, x, y);
       ctx.fill();
       const tex = new THREE.CanvasTexture(canvas);
-      tex.minFilter = THREE.LinearMipmapLinearFilter;
-      tex.magFilter = THREE.LinearFilter;
-      tex.generateMipmaps = true;
+      tex.minFilter = THREE.LinearFilter;
       disposables.push(tex);
       return tex;
     };
@@ -71,7 +70,7 @@ const Universe3D: React.FC<Universe3DProps> = React.memo(({ onSunClick, onPlanet
     }
     starFieldGeom.setAttribute('position', new THREE.BufferAttribute(starFieldPos, 3));
     const starFieldMat = new THREE.PointsMaterial({ 
-      size: 180, // Ligeramente más grande para más detalle
+      size: 150, 
       color: 0xaa44ff, 
       map: heartTexture, 
       transparent: true, 
@@ -85,7 +84,7 @@ const Universe3D: React.FC<Universe3DProps> = React.memo(({ onSunClick, onPlanet
     // Objetos interactivos definidos explícitamente para el Raycaster
     const interactiveObjects: THREE.Object3D[] = [];
 
-    const sunGeom = new THREE.SphereGeometry(540, 128, 128); // Más segmentos para suavidad
+    const sunGeom = new THREE.SphereGeometry(540, 64, 64);
     const sunMat = new THREE.MeshBasicMaterial({ color: 0xffdd00 });
     const sun = new THREE.Mesh(sunGeom, sunMat);
     sun.name = "sun";
@@ -104,7 +103,7 @@ const Universe3D: React.FC<Universe3DProps> = React.memo(({ onSunClick, onPlanet
       haloPos[i * 3 + 2] = r * Math.cos(phi);
     }
     sunHaloGeom.setAttribute('position', new THREE.BufferAttribute(haloPos, 3));
-    const sunHaloMat = new THREE.PointsMaterial({ size: 80, color: 0xffaa00, map: heartTexture, transparent: true, opacity: 0.5, depthWrite: false });
+    const sunHaloMat = new THREE.PointsMaterial({ size: 60, color: 0xffaa00, map: heartTexture, transparent: true, opacity: 0.5, depthWrite: false });
     const sunHalo = new THREE.Points(sunHaloGeom, sunHaloMat);
     scene.add(sunHalo);
     disposables.push(sunHaloGeom, sunHaloMat);
@@ -119,7 +118,7 @@ const Universe3D: React.FC<Universe3DProps> = React.memo(({ onSunClick, onPlanet
     const createHDPlanet = (index: number, radius: number, colorStr: string, dist: number, speed: number, phrase: string) => {
       const group = new THREE.Group();
       
-      const coreGeom = new THREE.SphereGeometry(radius * 0.85, 64, 64); // Más resolución
+      const coreGeom = new THREE.SphereGeometry(radius * 0.85, 32, 32);
       const coreMat = new THREE.MeshBasicMaterial({ color: colorStr, transparent: true, opacity: 0.4 });
       const core = new THREE.Mesh(coreGeom, coreMat);
       core.name = `planet_${index}`;
@@ -131,44 +130,21 @@ const Universe3D: React.FC<Universe3DProps> = React.memo(({ onSunClick, onPlanet
       interactiveObjects.push(core);
       disposables.push(coreGeom, coreMat);
 
-      // 1. Aumentamos MASIVAMENTE la resolución del canvas para nitidez 4K
-      const resolutionScale = 4; // Multiplicador de súper-muestreo
-      const baseFontSize = 60;
-      const canvasHeight = 120 * resolutionScale;
-      
+      // Anillo optimizado con canvas local
       const canvas = document.createElement('canvas');
-      const tempCtx = canvas.getContext('2d')!;
-      tempCtx.font = `bold ${baseFontSize * resolutionScale}px Montserrat`;
-      const textMetrics = tempCtx.measureText(phrase);
-      const textWidth = Math.ceil(textMetrics.width) + (200 * resolutionScale);
-      
-      canvas.width = textWidth; 
-      canvas.height = canvasHeight;
-      const ctx = canvas.getContext('2d', { alpha: true })!;
-      
-      // 2. Dibujamos con la resolución escalada
-      ctx.font = `bold ${baseFontSize * resolutionScale}px Montserrat`;
+      canvas.width = 1024; canvas.height = 64;
+      const ctx = canvas.getContext('2d')!;
+      ctx.font = 'bold 24px Montserrat';
       ctx.fillStyle = 'white';
       ctx.textBaseline = 'middle';
-      
-      // Sombra más nítida para contraste
-      ctx.shadowColor = 'rgba(0, 0, 0, 1)';
-      ctx.shadowBlur = 15;
-      ctx.lineWidth = 4 * resolutionScale;
-      ctx.strokeStyle = 'rgba(0,0,0,0.9)';
-      
-      ctx.strokeText(phrase, 100 * resolutionScale, canvasHeight / 2);
-      ctx.fillText(phrase, 100 * resolutionScale, canvasHeight / 2);
+      ctx.fillText(phrase, 10, 32);
       
       const ringTex = new THREE.CanvasTexture(canvas);
       ringTex.wrapS = THREE.RepeatWrapping;
-      ringTex.anisotropy = Math.min(renderer.capabilities.getMaxAnisotropy(), 16);
-      ringTex.minFilter = THREE.LinearMipmapLinearFilter;
-      ringTex.magFilter = THREE.LinearFilter;
+      ringTex.anisotropy = renderer.capabilities.getMaxAnisotropy();
       disposables.push(ringTex);
       
-      const ringHeight = 140; 
-      const ringGeom = new THREE.CylinderGeometry(dist, dist, ringHeight, 128, 1, true);
+      const ringGeom = new THREE.CylinderGeometry(dist, dist, 40, 64, 1, true);
       const ringMat = new THREE.MeshBasicMaterial({ map: ringTex, transparent: true, side: THREE.DoubleSide, depthWrite: false });
       const ringMesh = new THREE.Mesh(ringGeom, ringMat);
       group.add(ringMesh);
@@ -185,21 +161,7 @@ const Universe3D: React.FC<Universe3DProps> = React.memo(({ onSunClick, onPlanet
     ];
     planets.forEach(p => scene.add(p.group));
 
-    const clusterMaterials = [0xaa00ff, 0x8800ff, 0xcc44ff, 0x6600cc].map(color => {
-      const mat = new THREE.PointsMaterial({ 
-        size: 100, 
-        color, 
-        map: heartTexture, 
-        transparent: true, 
-        opacity: 1.0, 
-        blending: THREE.AdditiveBlending, 
-        depthWrite: false 
-      });
-      disposables.push(mat);
-      return mat;
-    });
-
-    const createHeartCluster = (count: number, spread: number, basePos: THREE.Vector3, colorIndex: number) => {
+    const createHeartCluster = (count: number, spread: number, basePos: THREE.Vector3, color: number) => {
       const geom = new THREE.BufferGeometry();
       const pos = new Float32Array(count * 3);
       for (let i = 0; i < count; i++) {
@@ -212,8 +174,9 @@ const Universe3D: React.FC<Universe3DProps> = React.memo(({ onSunClick, onPlanet
         pos[i*3+2] = basePos.z + (Math.random() - 0.5) * spread;
       }
       geom.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-      const points = new THREE.Points(geom, clusterMaterials[colorIndex]);
-      disposables.push(geom);
+      const mat = new THREE.PointsMaterial({ size: 100, color, map: heartTexture, transparent: true, opacity: 1.0, blending: THREE.AdditiveBlending, depthWrite: false });
+      const points = new THREE.Points(geom, mat);
+      disposables.push(geom, mat);
       return points;
     };
 
@@ -223,33 +186,14 @@ const Universe3D: React.FC<Universe3DProps> = React.memo(({ onSunClick, onPlanet
       const theta = Math.random() * Math.PI * 2;
       const phi = Math.acos(2 * Math.random() - 1);
       const randomPos = new THREE.Vector3(distance * Math.sin(phi) * Math.cos(theta), (Math.random() - 0.5) * 4000, distance * Math.sin(phi) * Math.sin(theta));
-      scene.add(createHeartCluster(12, 250, randomPos, Math.floor(Math.random() * clusterMaterials.length)));
+      const colors = [0xaa00ff, 0x8800ff, 0xcc44ff, 0x6600cc];
+      scene.add(createHeartCluster(12, 250, randomPos, colors[Math.floor(Math.random() * colors.length)]));
     }
 
-    const updateCamera = () => {
-      const width = window.innerWidth;
-      const height = window.innerHeight;
-      const aspect = width / height;
-      camera.aspect = aspect;
-      
-      // Cálculo dinámico para que el sistema solar siempre quepa bien
-      // En móviles (aspect < 1) necesitamos un FOV mayor o alejar la cámara
-      if (aspect < 1) {
-        camera.fov = 45 + (1 - aspect) * 20; // Aumenta el FOV conforme se hace más estrecho
-        camera.position.set(8000, 4000, 8000);
-      } else {
-        camera.fov = 30;
-        camera.position.set(6500, 3000, 6500);
-      }
-      
-      camera.updateProjectionMatrix();
-      renderer.setSize(width, height);
-    };
-
-    updateCamera(); // Llamada inicial
+    camera.position.set(6500, 3000, 6500);
     camera.lookAt(0, 0, 0);
 
-    const onPointerDown = (event: PointerEvent) => {
+    const onMouseDown = (event: MouseEvent) => {
       mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
       mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
       raycaster.setFromCamera(mouse, camera);
@@ -261,12 +205,7 @@ const Universe3D: React.FC<Universe3DProps> = React.memo(({ onSunClick, onPlanet
       }
     };
 
-    let lastRaycastTime = 0;
-    const onPointerMove = (event: PointerEvent) => {
-      const now = performance.now();
-      if (now - lastRaycastTime < 33) return;
-      lastRaycastTime = now;
-
+    const onMouseMove = (event: MouseEvent) => {
       mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
       mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
       raycaster.setFromCamera(mouse, camera);
@@ -274,31 +213,35 @@ const Universe3D: React.FC<Universe3DProps> = React.memo(({ onSunClick, onPlanet
       if (mountRef.current) mountRef.current.style.cursor = intersects.length > 0 ? 'pointer' : 'default';
     };
 
-    window.addEventListener('pointerdown', onPointerDown);
-    window.addEventListener('pointermove', onPointerMove, { passive: true });
+    window.addEventListener('mousedown', onMouseDown);
+    window.addEventListener('mousemove', onMouseMove);
 
     let animationId: number;
     const animate = () => {
       animationId = requestAnimationFrame(animate);
-      const delta = Math.min(clock.getDelta(), 0.1); 
-      const timescale = delta * 60; 
+      const delta = clock.getDelta();
+      const timescale = delta * 60; // Normalizado a 60fps
       
-      for (let i = 0; i < planets.length; i++) {
-        const p = planets[i];
+      planets.forEach(p => {
         p.orbitGroup.rotation.y += p.speed * timescale;
         if (p.ringMesh.material.map) p.ringMesh.material.map.offset.x += 0.0004 * timescale;
-      }
+      });
       sunHalo.rotation.y += 0.002 * timescale;
       renderer.render(scene, camera);
     };
     animate();
 
-    window.addEventListener('resize', updateCamera);
+    const handleResize = () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    };
+    window.addEventListener('resize', handleResize);
 
     return () => { 
-      window.removeEventListener('resize', updateCamera);
-      window.removeEventListener('pointerdown', onPointerDown);
-      window.removeEventListener('pointermove', onPointerMove);
+      window.removeEventListener('resize', handleResize);
+      window.removeEventListener('mousedown', onMouseDown);
+      window.removeEventListener('mousemove', onMouseMove);
       cancelAnimationFrame(animationId);
       disposables.forEach(d => d.dispose());
       renderer.dispose();
@@ -309,52 +252,12 @@ const Universe3D: React.FC<Universe3DProps> = React.memo(({ onSunClick, onPlanet
   return <div ref={mountRef} className="webgl-container" />;
 });
 
-// 2. Componente de Galería optimizado
-const PhotoGallery: React.FC<{
-  isOpen: boolean;
-  onClose: () => void;
-  photos: string[];
-  title: string;
-  phrase: string;
-}> = React.memo(({ isOpen, onClose, photos, title, phrase }) => {
-  if (!isOpen) return null;
-
-  return (
-    <div className="photo-gallery-overlay" onClick={onClose}>
-      <div className="photo-gallery-content" onClick={(e) => e.stopPropagation()}>
-        <button className="close-gallery" onClick={onClose}>&times;</button>
-        <div className="photo-grid single-view">
-          {photos.map((src, index) => {
-            const isHorizontal = src.includes('j.jpeg');
-            return (
-              <div 
-                key={`${src}-${index}`} 
-                className={`photo-item ${isHorizontal ? 'horizontal' : ''}`} 
-                style={{ animationDelay: `${index * 0.1}s` } as React.CSSProperties}
-              >
-                <img 
-                  src={src} 
-                  alt={`Moment ${index + 1}`} 
-                  loading="eager" 
-                  decoding="async"
-                />
-              </div>
-            );
-          })}
-        </div>
-        <div className="gallery-footer">
-          <h3 className="gallery-title">{title}</h3>
-          <p className="romantic-phrase">"{phrase}"</p>
-        </div>
-      </div>
-    </div>
-  );
-});
-
 function App() {
   const [showMessage, setShowMessage] = React.useState(false);
   const [showGallery, setShowGallery] = React.useState(false);
-  const [galleryData, setGalleryData] = React.useState({ photos: [] as string[], title: "", phrase: "" });
+  const [galleryPhotos, setGalleryPhotos] = React.useState<string[]>([]);
+  const [galleryTitle, setGalleryTitle] = React.useState("");
+  const [currentPhrase, setCurrentPhrase] = React.useState("");
   const [starActive, setStarActive] = React.useState(false);
   const [starStyle, setStarStyle] = React.useState<React.CSSProperties>({});
 
@@ -375,38 +278,25 @@ function App() {
     return romanticPhrases[Math.floor(Math.random() * romanticPhrases.length)];
   }, [romanticPhrases]);
 
-  const sunPhoto = `${import.meta.env.BASE_URL}fotos/j.jpeg`;
+  const sunPhoto = "/fotos/j.jpeg";
   const planetPhotos = useMemo(() => [
-    `${import.meta.env.BASE_URL}fotos/a.jpeg`,
-    `${import.meta.env.BASE_URL}fotos/c.jpeg`,
-    `${import.meta.env.BASE_URL}fotos/i.jpeg`,
-    `${import.meta.env.BASE_URL}fotos/k.jpeg`
+    "/fotos/a.jpeg",
+    "/fotos/c.jpeg",
+    "/fotos/i.jpeg",
+    "/fotos/k.jpeg"
   ], []);
 
-  // Pre-carga de imágenes para que salgan instantáneas
-  useEffect(() => {
-    const allPhotos = [sunPhoto, ...planetPhotos];
-    allPhotos.forEach(src => {
-      const img = new Image();
-      img.src = src;
-    });
-  }, [sunPhoto, planetPhotos]);
-
   const handleSunClick = useCallback(() => {
-    setGalleryData({
-      photos: [sunPhoto],
-      title: "NUESTRO MOMENTO RADIANTE",
-      phrase: "Sin importar lo que pase, yo siempre estaré contigo"
-    });
+    setGalleryPhotos([sunPhoto]);
+    setGalleryTitle("NUESTRO MOMENTO RADIANTE");
+    setCurrentPhrase("Sin importar lo que pase, yo siempre estaré contigo");
     setShowGallery(true);
   }, [sunPhoto]);
 
   const handlePlanetClick = useCallback((index: number) => {
-    setGalleryData({
-      photos: [planetPhotos[index]],
-      title: "UN RECUERDO ESPECIAL",
-      phrase: getRandomPhrase()
-    });
+    setGalleryPhotos([planetPhotos[index]]);
+    setGalleryTitle("UN RECUERDO ESPECIAL");
+    setCurrentPhrase(getRandomPhrase());
     setShowGallery(true);
   }, [planetPhotos, getRandomPhrase]);
 
@@ -454,13 +344,31 @@ function App() {
         </div>
       )}
       
-      <PhotoGallery 
-        isOpen={showGallery}
-        onClose={() => setShowGallery(false)}
-        photos={galleryData.photos}
-        title={galleryData.title}
-        phrase={galleryData.phrase}
-      />
+      {showGallery && (
+        <div className="photo-gallery-overlay" onClick={() => setShowGallery(false)}>
+          <div className="photo-gallery-content" onClick={(e) => e.stopPropagation()}>
+            <button className="close-gallery" onClick={() => setShowGallery(false)}>&times;</button>
+            <div className="photo-grid single-view">
+              {galleryPhotos.map((src, index) => {
+                const isHorizontal = src.includes('j.jpeg');
+                return (
+                  <div 
+                    key={index} 
+                    className={`photo-item ${isHorizontal ? 'horizontal' : ''}`} 
+                    style={{ animationDelay: `${index * 0.1}s` } as React.CSSProperties}
+                  >
+                    <img src={src} alt={`Moment ${index + 1}`} loading="lazy" />
+                  </div>
+                );
+              })}
+            </div>
+            <div className="gallery-footer">
+              <h3 className="gallery-title">{galleryTitle}</h3>
+              <p className="romantic-phrase">"{currentPhrase}"</p>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="title-container top-aligned">
         <h2 className="sub-title">EL AMOR DE MI VIDA</h2>
