@@ -1,0 +1,411 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body, html, #root {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background-color: #000;
+  font-family: 'Montserrat', sans-serif;
+}
+
+.universe {
+  position: relative;
+  width: 100%;
+  height: 100vh;
+  background: radial-gradient(circle at center, #0a0a1a 0%, #000 100%);
+}
+
+.webgl-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 5;
+}
+
+.nebula {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: 
+    radial-gradient(circle at 20% 30%, rgba(62, 0, 115, 0.3), transparent 50%),
+    radial-gradient(circle at 80% 70%, rgba(230, 0, 150, 0.2), transparent 50%),
+    radial-gradient(circle at 50% 50%, rgba(0, 100, 200, 0.1), transparent 70%);
+  filter: blur(100px);
+  z-index: 1;
+  animation: nebulaPulse 15s ease-in-out infinite alternate;
+  will-change: transform, opacity;
+  transform: translateZ(0); /* Capa independiente de GPU */
+}
+
+@keyframes nebulaPulse {
+  0% { opacity: 0.6; transform: scale(1) translateZ(0); }
+  100% { opacity: 1; transform: scale(1.05) translateZ(0); }
+}
+
+.title-container.top-aligned {
+  position: absolute;
+  top: 5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 50;
+  text-align: center;
+  pointer-events: none;
+  width: 100%;
+}
+
+.sub-title {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 1.2rem;
+  font-weight: 200;
+  color: rgba(255, 255, 255, 0.8);
+  letter-spacing: 0.8rem;
+  margin-bottom: 0.5rem;
+  text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+  animation: fadeInDown 2s ease-out;
+}
+
+.main-title {
+  font-family: 'Cinzel', serif;
+  font-size: 5rem;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: 1.5rem;
+  text-shadow: 
+    0 0 10px rgba(255, 255, 255, 0.8),
+    0 0 20px rgba(153, 0, 255, 0.5);
+  animation: titleGlow 4s ease-in-out infinite alternate, titleFloat 6s ease-in-out infinite;
+  user-select: none;
+  will-change: transform, text-shadow;
+  transform: translateZ(0);
+}
+
+@keyframes fadeInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes titleGlow {
+  from {
+    text-shadow: 
+      0 0 10px rgba(255, 255, 255, 0.8),
+      0 0 20px rgba(153, 0, 255, 0.5);
+  }
+  to {
+    text-shadow: 
+      0 0 20px rgba(255, 255, 255, 0.9),
+      0 0 40px rgba(204, 0, 255, 0.7);
+  }
+}
+
+@keyframes titleFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-20px); }
+}
+
+@media (max-width: 768px) {
+  .main-title {
+    font-size: 3rem;
+    letter-spacing: 0.5rem;
+  }
+}
+
+.ui-overlay {
+  position: absolute;
+  bottom: 20px;
+  width: 100%;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 0.8rem;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  z-index: 10;
+  pointer-events: none;
+}
+
+/* Estrella Fugaz */
+.shooting-star {
+  position: absolute;
+  width: 150px;
+  height: 150px;
+  background: transparent;
+  z-index: 200;
+  cursor: pointer;
+  pointer-events: auto;
+  opacity: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  will-change: transform, opacity;
+  transform: translateZ(0);
+}
+
+.shooting-star::after {
+  content: '';
+  width: 100px;
+  height: 4px;
+  background: linear-gradient(90deg, #cc00ff, transparent);
+  border-radius: 100px;
+  filter: drop-shadow(0 0 10px #cc00ff);
+}
+
+.shooting-star::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 25px;
+  width: 8px;
+  height: 8px;
+  background: white;
+  border-radius: 50%;
+  transform: translateY(-50%);
+  box-shadow: 0 0 20px 5px #cc00ff;
+}
+
+@keyframes shoot {
+  0% {
+    transform: translate(0, 0) rotate(var(--rotation)) translateZ(0);
+    opacity: 0;
+  }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% {
+    transform: translate(var(--travel-x), var(--travel-y)) rotate(var(--rotation)) translateZ(0);
+    opacity: 0;
+  }
+}
+
+.shooting-star.active {
+  animation: shoot 8s linear forwards;
+}
+
+/* Mensaje Especial */
+.special-message-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(8px);
+  z-index: 100;
+  cursor: pointer;
+  animation: fadeIn 0.5s ease-out forwards;
+}
+
+.special-message-content {
+  background: rgba(255, 255, 255, 0.1);
+  padding: 2rem 3rem;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: white;
+  text-align: center;
+  max-width: 80%;
+  box-shadow: 0 0 30px rgba(153, 0, 255, 0.3);
+}
+
+.special-message-content h2 {
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 300;
+  font-size: 1.5rem;
+  line-height: 1.4;
+  letter-spacing: 1px;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: scale(0.9); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+/* Galería de Fotos */
+.photo-gallery-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: rgba(0, 0, 0, 0.9);
+  backdrop-filter: blur(20px);
+  z-index: 1000;
+  animation: sunExplosion 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  cursor: pointer;
+}
+
+@keyframes sunExplosion {
+  from { 
+    opacity: 0;
+    transform: scale(0);
+    filter: brightness(5) blur(30px);
+  }
+  to { 
+    opacity: 1;
+    transform: scale(1);
+    filter: brightness(1) blur(0px);
+  }
+}
+
+.photo-gallery-content {
+  position: relative;
+  width: 90%;
+  max-width: 1100px;
+  max-height: 85vh;
+  background: rgba(255, 255, 255, 0.03);
+  padding: 4rem 2rem 2rem;
+  border-radius: 40px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 0 100px rgba(255, 221, 0, 0.1);
+  overflow-y: auto;
+  cursor: default;
+}
+
+.close-gallery {
+  position: absolute;
+  top: 1.5rem;
+  right: 2rem;
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  color: white;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  font-size: 2rem;
+  cursor: pointer;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  transition: all 0.3s;
+}
+
+.close-gallery:hover {
+  background: #ffdd00;
+  color: black;
+  transform: rotate(90deg);
+}
+
+.photo-grid.single-view {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 400px;
+}
+
+.photo-grid.single-view .photo-item {
+  width: auto;
+  max-width: 100%;
+  max-height: 70vh;
+}
+
+.photo-grid.single-view .photo-item.horizontal {
+  grid-column: auto;
+  aspect-ratio: auto;
+}
+
+.photo-grid.single-view .photo-item img {
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: 70vh;
+  object-fit: contain;
+}
+
+.photo-item {
+  position: relative;
+  aspect-ratio: 4/5;
+  border-radius: 20px;
+  overflow: hidden;
+  border: 4px solid white;
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5);
+  opacity: 0;
+  transform: translateY(100px) rotate(10deg);
+  animation: photoPopOut 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+  transition: transform 0.4s;
+  will-change: transform, opacity;
+  transform: translateZ(0);
+}
+
+.photo-item.horizontal {
+  aspect-ratio: 3/2;
+  grid-column: span 2;
+}
+
+@media (max-width: 768px) {
+  .photo-item.horizontal {
+    grid-column: span 1;
+    aspect-ratio: 3/2;
+  }
+}
+
+@keyframes photoPopOut {
+  to {
+    opacity: 1;
+    transform: translateY(0) rotate(0deg);
+  }
+}
+
+.photo-item:hover {
+  transform: scale(1.05) translateY(-10px) rotate(-2deg);
+  z-index: 10;
+  border-color: #ffdd00;
+}
+
+.photo-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.gallery-footer {
+  text-align: center;
+  margin-top: 1.5rem;
+}
+
+.gallery-title {
+  color: #ffdd00;
+  font-family: 'Cinzel', serif;
+  font-size: 1.8rem;
+  letter-spacing: 0.5rem;
+  margin-bottom: 0.5rem;
+  text-shadow: 0 0 10px rgba(255, 221, 0, 0.5);
+}
+
+.romantic-phrase {
+  color: white;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 1.2rem;
+  font-style: italic;
+  font-weight: 300;
+  letter-spacing: 1px;
+  opacity: 0.9;
+  animation: fadeIn 1s ease-out;
+}
+
+@media (max-width: 600px) {
+  .photo-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+  }
+  
+  .gallery-title {
+    font-size: 1.2rem;
+    letter-spacing: 0.2rem;
+  }
+}
